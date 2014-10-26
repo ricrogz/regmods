@@ -8,7 +8,7 @@ output:
 
 by R. Rodríguez
 
-**NOTE:** I understand this course is not about R, but about regression models, therefore, the R code and outputs are mostly hidden or embedded in text. If you are interested in the code, or just to see how I did X, the source code for this document is available at https://github.com/ricrogz/regmods
+**NOTE:** I understand this course is not about R, but about regression models, therefore, due to the space limitations in this assignment, the R code and outputs are mostly hidden or embedded in text. If you are interested in the code, or just to see how I did X, the source code for this document is available at https://github.com/ricrogz/regmods
 
 ### Summary ###
 
