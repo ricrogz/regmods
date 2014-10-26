@@ -1,0 +1,68 @@
+---
+title: "Transmission type versus MPG in our beloved 1973-74 classic cars"
+output:
+  html_document: default
+  pdf_document:
+    fig_caption: yes
+---
+
+by R. Rodríguez
+
+*NOTE: the source code for this document is available at 
+
+### Summary ###
+
+In this issue of MotorTrend we are going to have a statistical look at our favourite models from 1973-74,and we will try to determine which is more fuel efficient: automatic transmission or manual. First we will try a "naive" approximation on which kind of transmission is more fuel efficient in average, and after that, we will take a deeper look into the features of our cars to find out the reason of this difference.
+
+### Hands on ###
+
+```{r, echo=FALSE}
+# Load data
+data(mtcars)
+
+# Convert dome data to factors for easier handling
+mtcars$cyl  <- factor(mtcars$cyl)
+mtcars$vs   <- factor(mtcars$vs)
+mtcars$am   <- factor(mtcars$am)
+mtcars$gear <- factor(mtcars$gear)
+mtcars$carb <- factor(mtcars$carb)
+
+# export into global environment for easier access
+attach(mtcars)
+```
+
+To start our study, we will do a very naive plot to compare the mpg averages of manual and automatic tramsission cars. This plot is shown in Figure 1 in the Appendix. The graph clearly shows that the average mpg values are quite different, with the average mpg for automatic cars being clearly higher than the one for manual transmission cars (`r round(mean(mpg[am==1]),2)` versus `r round(mean(mpg[am==0]),2)`).
+
+A paired t-test shows that this difference is signifficant (`r paste("p.value =", round(t.test(mpg[am==0],mpg[am==1])$p.value,3))`)
+
+But, this is only a very simple comparison; it might be that it is not directly the manual transmission who is responsible for the higher fuel consumption, but other characteristics which are more frequent in manual transmission cars than in automatic ones. Now we will try to evaluate such factors.
+
+For first, we will do another plot. We will build a grid of pair plots to explore the relation between mpg and all the other variables in our data. This paired plot is shown in Figure 2 in the appendix. The plots above the diagonal show the data plus a LOWESS smoother, and the values in the boxes under the diagonals are the correlation values between the variables indicated by the row and column.
+
+Since we are most interested in the mpg, we observe the first row of plots and the first column of correlation factors in the grid, and see that variables "cyl" (number of cylinders), "disp" (displacement in inches), "hp" (gross horsepower), "wt" (weight in lb/1000) have the strongest correlation with mpg, but the correlations between each pair of these variables are also strong, which makes it difficult to predict which of these variables would be the best candidates as regressors in a multiple regression model.
+
+To further investigate this relations, we are going to 
+ 
+
+### Appendix ###
+
+```{r fig.cap="Figure 1: Naive FUel efficiency by transmission type."}
+boxplot(mpg[am==0],mpg[am==1], ylab ="Miles Per Gallon", xlab ="Transmission Type", names=c("Manual", "Automatic"))
+```
+
+```{r, echo=FALSE}
+panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...)
+{
+    usr <- par("usr"); on.exit(par(usr))
+    par(usr = c(0, 1, 0, 1))
+    r <- abs(cor(x, y))
+    txt <- format(c(r, 0.123456789), digits = digits)[1]
+    txt <- paste0(prefix, txt)
+    if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
+    text(0.5, 0.5, txt)
+}
+```
+
+```{r fig.cap="Figure 2: Paired plots."}
+pairs(mtcars, upper.panel=panel.smooth, lower.panel=panel.cor)
+```
