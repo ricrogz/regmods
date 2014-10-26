@@ -1,21 +1,20 @@
 ---
-title: "Transmission type versus MPG in our beloved 1973-74 classic cars"
+title: "Transmission type versus MPG in 1973-74 classic cars"
 output:
-  html_document: default
   pdf_document:
     fig_caption: yes
+  html_document: default
 ---
 
 by R. Rodríguez
 
-*NOTE: the source code for this document is available at 
+**NOTE:** I understand this course is not about R, but about regression models, therefore, the R code and outputs are mostly hidden or embedded in text. If you are interested in the code, or just to see how I did X, the source code for this document is available at https://github.com/ricrogz/regmods
 
 ### Summary ###
 
 In this issue of MotorTrend we are going to have a statistical look at our favourite models from 1973-74,and we will try to determine which is more fuel efficient: automatic transmission or manual. First we will try a "naive" approximation on which kind of transmission is more fuel efficient in average, and after that, we will take a deeper look into the features of our cars to find out the reason of this difference.
 
-### Hands on ###
-
+### Analysis ###
 ```{r, echo=FALSE}
 # Load data
 data(mtcars)
@@ -30,10 +29,9 @@ mtcars$carb <- factor(mtcars$carb)
 # export into global environment for easier access
 attach(mtcars)
 ```
+To start our study, we will do a very naive plot to compare the mpg averages of manual and automatic tramsission cars. This plot is shown in Figure 1 in the Appendix. The graph clearly shows that the average mpg values are quite different, with the average mpg for automatic cars being clearly higher than the one for manual transmission cars (`r ampg <- mean(mpg[am==1]); round(ampg,2)` versus `r mmpg <- mean(mpg[am==0]); round(mmpg,2)`).
 
-To start our study, we will do a very naive plot to compare the mpg averages of manual and automatic tramsission cars. This plot is shown in Figure 1 in the Appendix. The graph clearly shows that the average mpg values are quite different, with the average mpg for automatic cars being clearly higher than the one for manual transmission cars (`r round(mean(mpg[am==1]),2)` versus `r round(mean(mpg[am==0]),2)`).
-
-A paired t-test shows that this difference is signifficant (`r paste("p.value =", round(t.test(mpg[am==0],mpg[am==1])$p.value,3))`)
+A paired t-test shows that this difference is signifficant (`r paste("p.value =", round(t.test(mpg[am==0],mpg[am==1])$p.value,3))`). When trying to fit to a simple linear regression model, we get a regression coefficient of `r m <- lm(mpg~am); R.sq <- round(summary(m)$r.squared,3); paste("R.squared = ", R.sq)`, which means the model we get is only able to explain `r R.sq*100` % of the variance in the data.
 
 But, this is only a very simple comparison; it might be that it is not directly the manual transmission who is responsible for the higher fuel consumption, but other characteristics which are more frequent in manual transmission cars than in automatic ones. Now we will try to evaluate such factors.
 
@@ -41,12 +39,39 @@ For first, we will do another plot. We will build a grid of pair plots to explor
 
 Since we are most interested in the mpg, we observe the first row of plots and the first column of correlation factors in the grid, and see that variables "cyl" (number of cylinders), "disp" (displacement in inches), "hp" (gross horsepower), "wt" (weight in lb/1000) have the strongest correlation with mpg, but the correlations between each pair of these variables are also strong, which makes it difficult to predict which of these variables would be the best candidates as regressors in a multiple regression model.
 
-To further investigate this relations, we are going to 
- 
+To further investigate this relations, we are going to build several multiple variable regression models, and evaluate them stepwise to find the one which the most significante refressors. For this, we will use R's step function, using the AIC algorithm, using both backwards elimination and forward selection. The result of this process is the following model:
+
+```{r, echo=FALSE}
+# First, we build a model with all variables
+full.model <- lm(mpg ~ ., mtcars)
+
+# we use 'step' to select the model with the most significant variables
+best.model <- step(full.model, direction = "both", trace = 0)
+
+summary(best.model)
+```
+
+As it was expected, the model uses three of the regressors we detected in the pair plots, but ignores the "disp" one. At the same time, the transmission type is also included in the model, meaning that it indeed has some influence on mpg.
+
+As we can see, the selected model has an adjusted R squared value of `r s <- summary(best.model); adj.R.sq <- round(s$adj.r.squared,3); adj.R.sq` (it explains `r adj.R.sq * 100` % of the variance in the data. Further than that, we can identify the impacts of the changes in each of the regressors: 4-cylinder motors have the highest mpg values, and going up to 6 or 8 cylinders produces a decrease mpg (-3.03 mpg and `r -3.03 -2.16` mpg, respectively); at the same time, an increase of 1 hp in motor power translates into a loss of -0.03 mpg, while weight also has an important impact on mpg, falling almost 2.5 mpg per 1000 lb of car weight. The only feature that has a positive impact on mpg is the transmission type, which improves in 1.81 mpg when changing from manual transmission to automatic, but is, at the same time, the regressor with the smallest influence (p.value = 0.20646 for 'am == 1', in respect to the only alternative of 'am == 0').
+
+Finally, to make sure we did not overlook any effect, we will analyze the residuals plots for our chosen model. The plots are shown in Figures 3 to 6 in the Appendix. In the plots, we can see that there are no recognizable patterns in the Residuals versus fitted plot (Fig. 3), so we did not miss any important relation in our model. Also, most of the residuals lay on or very close to the diagonal in the Normal Q - Q plot (Fig. 4), meaning the residuals are distributed almost normally. In the Scale - Location plot (Fig. 5), the points randomly scattered and uniformly distributed, so that we can conclude that the variance is constant.
+
+To conclude this analisis, we observe an outlier in the Residuals versus Leverage plot (Fig. 3). This outlier corresponds to the `r outlier <- which.max(hatvalues(best.model)); names(outlier)`, which is the car with the highest hp number in our data (~25% more hp than the second most powerful car). Despite the high hp value, and having 8 cylinders, the car is suprisingly fuel efficient, with a mpg value of `r mpg[outlier]`, versus the expected value of `r predict(best.model, mtcars[31,])`. Since there is no evidence of wrong data or error in this case, the `names(outlier)` should not be excluded from the fitted data, and therefore, our analysis is correct.
+
+
+### Conclusions ###
+
+Despite in a simple comparison automatic transmission cars have a signigicantly better mpg average than manual ones, a detailed study reveals the tramsission type has only a small effect on the mpg: we found out that a different transmission type only accounts for a change of approximately 1.81 mpg (keeping every other parameter constant), while the difference in the average between manual and automatic cars is around `r mmpg - ampg` mpg.
+
+More than that, our study revealed that the factos that are most influential in mpg are the number of cylinders, weight, horsepower (all of them with a negative influence: the higher this value, the lower the mpg), as well as the transmission type, as we already mentioned.
+
+_______________________________________________________________________________
+
 
 ### Appendix ###
 
-```{r fig.cap="Figure 1: Naive FUel efficiency by transmission type."}
+```{r echo=FALSE, fig.cap="Figure 1 - Naive Fuel efficiency by transmission type.", fig.height=3}
 boxplot(mpg[am==0],mpg[am==1], ylab ="Miles Per Gallon", xlab ="Transmission Type", names=c("Manual", "Automatic"))
 ```
 
@@ -63,6 +88,22 @@ panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...)
 }
 ```
 
-```{r fig.cap="Figure 2: Paired plots."}
+```{r echo=FALSE, fig.cap="Figure 2 - Paired variable plots."}
 pairs(mtcars, upper.panel=panel.smooth, lower.panel=panel.cor)
+```
+
+```{r echo=FALSE, fig.cap="Figure 3 - Residual plots: residuals versus fitted "}
+plot(best.model, which=1)
+```
+
+```{r echo=FALSE, fig.cap="Figure 4 - Residual plots: Normal Q - Q."}
+plot(best.model, which=2)
+```
+
+```{r echo=FALSE, fig.cap="Figure 5 - Residual plots: Scale - Location."}
+plot(best.model, which=3)
+```
+
+```{r echo=FALSE, fig.cap="Figure 6 - Residual plots: Residuals versus Leverage."}
+plot(best.model, which=5)
 ```
